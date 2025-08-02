@@ -1,7 +1,9 @@
-# ╔═══════════════════════════════════════════════════════════════╗
-# ║                  🦅 LYNX GOVERNANCE AGENT V2                  ║
-# ║            Decentralized Token Portfolio Governance           ║
-# ╚═══════════════════════════════════════════════════════════════╝
+```
+╔═══════════════════════════════════════════════════════════════╗
+║                  🦅 LYNX GOVERNANCE AGENT V2                  ║
+║            Decentralized Token Portfolio Governance           ║
+╚═══════════════════════════════════════════════════════════════╝
+```
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![Hedera](https://img.shields.io/badge/Hedera-000000?style=for-the-badge&logo=hedera&logoColor=white)
