@@ -1,0 +1,134 @@
+# ╔═══════════════════════════════════════════════════════════════╗
+# ║                  🦅 LYNX GOVERNANCE AGENT V2                  ║
+# ║                     Git Ignore Configuration                  ║
+# ╚═══════════════════════════════════════════════════════════════╝
+
+# 🔒 SECURITY - Never commit sensitive data
+.env
+.env.local
+.env.production
+.env.test
+*.pem
+*.p12
+*.key
+**/private-keys/**
+**/secrets/**
+
+# 📦 NODE.JS
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# 📁 BUILD OUTPUTS
+dist/
+build/
+out/
+*.tsbuildinfo
+.tsbuildinfo
+
+# 🔧 TYPESCRIPT
+*.tsbuildinfo
+.tsbuildinfo
+
+# 📊 LOGS
+logs/
+*.log
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# 🏃‍♂️ RUNTIME
+.nyc_output/
+coverage/
+*.lcov
+.coverage/
+
+# 🧪 TESTING
+.jest/
+coverage/
+*.lcov
+junit.xml
+test-results/
+
+# 💾 DATABASES
+*.db
+*.sqlite
+*.sqlite3
+
+# 🗂️ TEMPORARY FILES
+.tmp/
+.temp/
+*.tmp
+*.temp
+.cache/
+
+# 🖥️ OPERATING SYSTEM
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# 📝 EDITORS & IDEs
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# 🔄 VERSION CONTROL
+.git/
+
+# 📋 PACKAGE MANAGERS
+.yarn/
+.pnp.*
+.yarn-integrity
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# 🚀 DEPLOYMENT
+.vercel/
+.netlify/
+.now/
+dist-ssr/
+
+# 🌍 ENVIRONMENT SPECIFIC
+.env.backup
+.env.development
+.env.staging
+governance-state.json
+
+# 🤖 AI & TOOLS
+.cursor/
+.ai/
+*.ai-chat
+
+# 📸 SNAPSHOTS & STATE
+snapshots/
+state-backups/
+*.snapshot
+
+# 🔍 DEBUGGING
+.vscode/launch.json
+debug.log
+*.map
+
+# ═══════════════════════════════════════════════════════════════════
+# 💡 TIP: Use 'git check-ignore <file>' to test ignore patterns
+# 🔒 SECURITY: Always verify no sensitive data is committed!
+# ═══════════════════════════════════════════════════════════════════

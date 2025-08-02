@@ -1,0 +1,44 @@
+{
+  "name": "lynx-governance-agentv2",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "npm run build && node dist/index.js",
+    "send:vote": "tsx src/utils/send-test-vote.ts",
+    "send:alert": "tsx src/utils/send-test-dash-alert.ts",
+    "send:snapshot": "tsx src/utils/send-test-token-ratio-snapshot.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@hashgraph/sdk": "^2.69.0",
+    "@langchain/core": "^0.3.66",
+    "@langchain/openai": "^0.6.3",
+    "dotenv": "^17.2.1",
+    "hedera-agent-kit": "^3.0.7",
+    "langchain": "^0.3.30"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.1",
+    "@typescript-eslint/parser": "^8.18.1",
+    "eslint": "^9.17.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "dist",
+    "src",
+    "scripts",
+    "README.md",
+    "LICENSE"
+  ]
+}
