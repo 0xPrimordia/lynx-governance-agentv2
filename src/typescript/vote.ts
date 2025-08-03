@@ -8,7 +8,7 @@ export const MultiRatioVoteSchema = z.object({
   })),
   voterAccountId: z.string().regex(/^0\.0\.\d+$/),  // Hedera account ID format
   votingPower: z.number().min(0),               // Voter's voting power
-  timestamp: z.date(),                          // When the vote was cast
+  timestamp: z.coerce.date(),                   // When the vote was cast (auto-converts strings)
   txId: z.string().optional(),                  // Optional transaction ID
   reason: z.string().optional(),                // Optional reason for the vote
 });

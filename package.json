@@ -9,19 +9,24 @@
     "start": "npm run build && node dist/index.js",
     "send:vote": "tsx src/utils/send-test-vote.ts",
     "send:alert": "tsx src/utils/send-test-dash-alert.ts",
-    "send:snapshot": "tsx src/utils/send-test-token-ratio-snapshot.ts"
+    "send:snapshot": "tsx src/utils/send-test-token-ratio-snapshot.ts",
+    "test:contract": "tsx src/utils/test-contract-update.ts",
+    "check:topic": "tsx src/utils/check-topic-messages.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.0",
     "@hashgraph/sdk": "^2.69.0",
     "@langchain/core": "^0.3.66",
     "@langchain/openai": "^0.6.3",
+    "ai": "^5.0.0",
     "dotenv": "^17.2.1",
     "hedera-agent-kit": "^3.0.7",
-    "langchain": "^0.3.30"
+    "langchain": "^0.3.30",
+    "web3": "^4.16.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

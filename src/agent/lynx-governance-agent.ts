@@ -5,8 +5,10 @@ import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import { AgentMode, coreConsensusPlugin, coreQueriesPlugin, HederaLangchainToolkit } from 'hedera-agent-kit';
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
-import { TallyVoteTool } from '../tools/tally_vote.js';
+import { CalculateWinningRatiosTool } from '../tools/calculate_winning_ratios.js';
 import { UpdateLynxContractTool } from '../tools/update_lynx_contract.js';
+import { ParseHCS2VoteTool } from '../tools/parse_hcs2_vote.js';
+import { CreateTokenSnapshotTool } from '../tools/create_token_snapshot.js';
 
 config();
 
@@ -24,6 +26,10 @@ export class LynxGovernanceAgent {
     private agentExecutor?: AgentExecutor;
     private client?: Client;
     private isRunning: boolean = false;
+    
+    // State management for governance
+    private collectedVotes: any[] = [];
+    private currentVotingPower: number = 0;
 
     constructor() {
         this.environment = process.env as NodeJS.ProcessEnv & EnvironmentConfig;
@@ -37,7 +43,7 @@ export class LynxGovernanceAgent {
             'HEDERA_NETWORK',
             'HEDERA_ACCOUNT_ID',
             'HEDERA_PRIVATE_KEY',
-            'OPENAI_KEY',
+            'AI_GATEWAY_API_KEY',
             'LYNX_CONTRACT',
         ];
         const missingVars = requiredVars.filter(varName => !this.environment[varName]);
@@ -78,7 +84,10 @@ export class LynxGovernanceAgent {
             const llm = new ChatOpenAI({
                 modelName: "gpt-4o-mini",
                 temperature: 0,
-                apiKey: this.environment.OPENAI_KEY!,
+                configuration: {
+                    baseURL: "https://ai-gateway.vercel.sh/v1",
+                },
+                apiKey: this.environment.AI_GATEWAY_API_KEY!,
             });
 
             const prompt = ChatPromptTemplate.fromMessages([
@@ -91,26 +100,29 @@ export class LynxGovernanceAgent {
                 - Update smart contract ratios based on governance results
                 - Send real-time alerts and notifications throughout the process
 
-                VOTING PROCESS:
-                1. Parse incoming vote messages for votingPower and add to running total
-                2. Send dashboard alert for each vote received
-                3. When total voting power >= ${QUORUM_THRESHOLD}:
-                - Send "Quorum Reached" dashboard alert
-                - Use tally_vote tool to process all votes and determine winning ratios
-                - Use update_lynx_contract tool with winning ratios
-                - Send "Contract Updated" dashboard alert if successful
-                - Create token ratio snapshot and send to snapshot topic
-                - Send balancer alert about ratio updates
+                                 VOTING PROCESS:
+                 1. Use parse_hcs2_vote tool to extract vote data from raw HCS-2 message
+                 2. Add parsed vote to COLLECTED_VOTES array and votingPower to RUNNING_VOTE_TOTAL
+                 3. Send dashboard alert for each vote received
+                 4. When RUNNING_VOTE_TOTAL >= ${QUORUM_THRESHOLD}:
+                 - Send "Quorum Reached" dashboard alert
+                 - Use calculate_winning_ratios tool with COLLECTED_VOTES array to determine winning ratios
+                 - Use update_lynx_contract tool with winning ratios
+                 - Send "Contract Updated" dashboard alert if successful
+                 - Create token ratio snapshot and send to snapshot topic
+                 - Send balancer alert about ratio updates
 
-                MEMORY TRACKING:
-                - Maintain RUNNING_VOTE_TOTAL in conversation memory
-                - Collect all votes in COLLECTED_VOTES array for tallying
-                - Reset counters after successful governance round completion
+                 MEMORY TRACKING:
+                 - Maintain RUNNING_VOTE_TOTAL: number (sum of all votingPower)
+                 - Maintain COLLECTED_VOTES: MultiRatioVote[] (array of parsed vote objects)
+                 - Reset both counters after successful governance round completion
 
-                AVAILABLE TOOLS:
-                - tally_vote: Process collected votes when quorum reached
-                - update_lynx_contract: Update contract with winning token ratios
-                - submit_topic_message_tool: Send alerts to various topics
+                 AVAILABLE TOOLS:
+                 - parse_hcs2_vote: Extract and validate vote data from raw HCS-2 topic messages
+                 - calculate_winning_ratios: Process collected votes when quorum reached (takes MultiRatioVote[])
+                 - update_lynx_contract: Update contract with winning token ratios
+                 - create_token_snapshot: Create token ratio snapshot with proper hash and HCS-2 format
+                 - submit_topic_message_tool: Send alerts to various topics
 
                 Be precise, efficient, and provide clear status updates throughout the governance process.`],
                                 ["user", "{input}"],
@@ -118,9 +130,11 @@ export class LynxGovernanceAgent {
             ]);
 
             const hederaTools = this.hederaAgentToolkit.getTools();
-            const tallyVoteTool = new TallyVoteTool();
+            const calculateWinningRatiosTool = new CalculateWinningRatiosTool();
             const updateContractTool = new UpdateLynxContractTool(this.client);
-            const allTools = [...hederaTools, tallyVoteTool, updateContractTool];
+            const parseHCS2VoteTool = new ParseHCS2VoteTool();
+            const createSnapshotTool = new CreateTokenSnapshotTool(this.client);
+            const allTools = [...hederaTools, calculateWinningRatiosTool, updateContractTool, parseHCS2VoteTool, createSnapshotTool];
 
             const agent = await createToolCallingAgent({
                 llm,
@@ -193,8 +207,25 @@ export class LynxGovernanceAgent {
                         if (!this.isRunning || !message) return;
                         try {
                             console.log("🚨 New topic message received!");
-                            console.log(`📨 Message: ${Buffer.from(message.contents).toString("utf8")}`);
-                            console.log(`🕒 Timestamp: ${new Date(message.consensusTimestamp.toDate())}`);
+                            
+                            // Parse and display vote details nicely
+                            const rawMessage = Buffer.from(message.contents).toString("utf8");
+                            try {
+                                const hcs2Data = JSON.parse(rawMessage);
+                                if (hcs2Data.p === 'hcs-2' && hcs2Data.metadata) {
+                                    const voteData = JSON.parse(hcs2Data.metadata);
+                                    console.log(`👤 Voter: ${voteData.voterAccountId}`);
+                                    console.log(`⚡ Power: ${voteData.votingPower}`);
+                                    console.log(`📊 Ratios: ${voteData.ratioChanges.map(r => `${r.token}(${r.newRatio}%)`).join(', ')}`);
+                                    console.log(`💬 Reason: ${voteData.reason || 'No reason provided'}`);
+                                } else {
+                                    console.log(`📨 Raw: ${rawMessage.substring(0, 100)}...`);
+                                }
+                            } catch (parseError) {
+                                console.log(`📨 Raw: ${rawMessage.substring(0, 100)}...`);
+                            }
+                            
+                            console.log(`🕒 Time: ${new Date(message.consensusTimestamp.toDate()).toLocaleTimeString()}`);
                             await this.processTopicMessage(message);
                           } catch (error) {
                             console.error("❌ Error processing topic message:", error);
@@ -213,73 +244,209 @@ export class LynxGovernanceAgent {
         }
 
         try {
-            const result = await this.agentExecutor.invoke({
-                input: `Check the ${message} for the votingPower and add it to the total. If the total is greater than ${QUORUM_THRESHOLD}, then use the tally_vote tool for the quorum results.`
-            });
+            // Step 1: Parse the vote (simple LLM task)
+            const rawMessageContent = Buffer.from(message.contents).toString("utf8");
+            const vote = await this.parseVoteMessage(rawMessageContent);
             
-            console.log("🔍 Agent result:", result);
-            
-            // Check if tally_votes returned results (quorum reached)
-            if (result.output && result.output.includes('tokenResults')) {
-                console.log("🏛️ Quorum reached! Processing governance results...");
-                await this.sendDashboardAlert("Quorum Reached: Governance voting threshold has been met. Processing results...");
-                await this.processGovernanceResults(result.output);
+            if (!vote) {
+                console.log("❌ Failed to parse vote message");
+                return;
             }
             
-            await this.sendDashboardAlert("Vote Confirmed: The vote has been confirmed.");
+            // Step 2: JavaScript handles state management
+            this.addVoteToState(vote);
+            
+            console.log(`🗳️  Vote processed. RUNNING_VOTE_TOTAL: ${this.currentVotingPower}/${QUORUM_THRESHOLD}`);
+            
+            // Step 3: JavaScript decides the flow
+            if (this.currentVotingPower >= QUORUM_THRESHOLD) {
+                console.log("🏛️ Quorum reached! Processing governance results...");
+                await this.executeGovernanceFlow();
+            } else {
+                await this.sendDashboardAlert("Vote Confirmed: The vote has been confirmed.");
+            }
+            
         } catch (error) {
             console.error("❌ Error processing topic message:", error);
         }
     }
 
-    private async processGovernanceResults(tallyResults: string): Promise<void> {
-        if (!this.agentExecutor) {
-            throw new Error("Agent executor not initialized");
-        }
-
+    private async parseVoteMessage(rawMessage: string): Promise<any> {
         try {
-            // Extract winning ratios and update contract
-            const result = await this.agentExecutor.invoke({
-                input: `Based on these tally results: ${tallyResults}, extract the winning ratios for each token and use the update_lynx_contract tool to update the contract with the new ratios.`
-            });
+            const result = await this.agentExecutor!.invoke({
+                input: `Use the parse_hcs2_vote tool to parse this HCS-2 message:
 
-            console.log("📋 Contract update result:", result);
+${rawMessage}
+
+After using the tool, end your response with exactly:
+VOTE_DATA: {the vote object from the tool result}
+
+Example format:
+VOTE_DATA: {"type":"MULTI_RATIO_VOTE","voterAccountId":"0.0.123","votingPower":100,"ratioChanges":[...],"timestamp":"2025-08-03T16:12:53.534Z","reason":"..."}`
+            });
             
-            // Check if contract update was successful
-            if (result.output && (result.output.includes('success') || result.output.includes('completed'))) {
-                await this.sendDashboardAlert("Contract Updated: Token ratios have been successfully updated on the Lynx contract.");
+            // Extract vote data from the result
+            const vote = this.extractVoteFromResult(result.output);
+            return vote;
+        } catch (error) {
+            console.error("❌ Error parsing vote:", error);
+            return null;
+        }
+    }
+
+    private extractVoteFromResult(output: string): any {
+        try {
+            // Look for the VOTE_DATA: prefix that we asked the LLM to provide
+            const voteDataMatch = output.match(/VOTE_DATA:\s*(\{.*\})/s);
+            if (voteDataMatch) {
+                const voteData = JSON.parse(voteDataMatch[1]);
+                return voteData;
             }
             
-            await this.sendSnapshot(tallyResults);
-            await this.sendBalancerAlert();
+            // Fallback: try to extract JSON from tool output if VOTE_DATA format wasn't used
+            const jsonMatch = output.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const result = JSON.parse(jsonMatch[0]);
+                if (result.success && result.vote) {
+                    return result.vote;
+                } else {
+                    console.error("❌ Parse tool failed:", result.error || 'Unknown error');
+                    return null;
+                }
+            }
         } catch (error) {
-            console.error("❌ Error processing governance results:", error);
+            console.error("❌ Error extracting vote from result:", error);
         }
+        return null;
     }
 
-    private async sendSnapshot(tallyResults: string): Promise<void> {
-        if (!this.agentExecutor) {
-            throw new Error("Agent executor not initialized");
+    private addVoteToState(vote: any): void {
+        // Handle vote deduplication (latest vote per voter wins)
+        const existingIndex = this.collectedVotes.findIndex(v => v.voterAccountId === vote.voterAccountId);
+        if (existingIndex >= 0) {
+            // Replace existing vote from same voter
+            const oldVote = this.collectedVotes[existingIndex];
+            this.currentVotingPower -= oldVote.votingPower;
+            this.collectedVotes[existingIndex] = vote;
+        } else {
+            // New voter
+            this.collectedVotes.push(vote);
         }
+        this.currentVotingPower += vote.votingPower;
+    }
+
+    private async executeGovernanceFlow(): Promise<void> {
+        console.log("🔄 Step 1: Sending quorum alert...");
+        await this.sendDashboardAlert("Quorum Reached: Governance voting threshold has been met. Processing results...");
         
-        try {
-            const result = await this.agentExecutor.invoke({
-                input: `Based on these tally results: ${tallyResults}, create a TokenRatioSnapshotData object with:
-                - snapshot_id: "snapshot_" + current timestamp
-                - snapshot_type: "token_ratios"  
-                - governance_session: "governance_round_" + current date
-                - token_weights: extract winning ratios from tally results as decimal percentages (e.g. 0.35 for 35%)
-                - timestamp: current date
-                - created_by: "${this.environment.HEDERA_ACCOUNT_ID}"
-                - hash: SHA256 hash of the token_weights
-                Then wrap it in HCS-2 format and use submit_topic_message_tool to send to ${this.environment.TOKEN_RATIO_SNAPSHOT_TOPIC}`
-            });
-
-            console.log("📸 Snapshot result:", result);
-        } catch (error) {
-            console.error("❌ Error sending token ratio snapshot:", error);
+        console.log("🔄 Step 2: Calculating winning ratios...");
+        const ratios = await this.calculateWinningRatios();
+        
+        if (ratios) {
+            console.log("🔄 Step 3: Updating contract...");
+            await this.updateContract(ratios);
+            
+            console.log("🔄 Step 4: Creating snapshot...");
+            await this.createSnapshot(ratios);
+            
+            console.log("🔄 Step 5: Sending balancer alert...");
+            await this.sendBalancerAlert();
+            
+            // Reset state for next round
+            this.resetGovernanceState();
         }
     }
+
+    private async calculateWinningRatios(): Promise<any> {
+        try {
+            const result = await this.agentExecutor!.invoke({
+                input: `Analyze these collected votes and determine the winning ratios for each token.
+
+Collected Votes (${this.collectedVotes.length} votes, ${this.currentVotingPower} total power):
+${JSON.stringify(this.collectedVotes, null, 2)}
+
+Rules:
+- Latest vote per voter wins (handle any duplicates by timestamp)
+- For each token, find the ratio that has the most voting power
+- Return the winning ratios in this exact format:
+
+WINNING_RATIOS: {"hbarRatio":X,"wbtcRatio":Y,"sauceRatio":Z,"usdcRatio":A,"jamRatio":B,"headstartRatio":C}
+
+Where X,Y,Z,A,B,C are the winning ratio numbers for each token.`
+            });
+            
+            return this.extractRatiosFromResult(result.output);
+        } catch (error) {
+            console.error("❌ Error calculating winning ratios:", error);
+            return null;
+        }
+    }
+
+    private extractRatiosFromResult(output: string): any {
+        try {
+            // Look for the WINNING_RATIOS: prefix that we asked the LLM to provide
+            const winningRatiosMatch = output.match(/WINNING_RATIOS:\s*(\{.*\})/s);
+            if (winningRatiosMatch) {
+                const ratiosData = JSON.parse(winningRatiosMatch[1]);
+                return ratiosData;
+            }
+            
+            // Fallback: try to extract ratios from any JSON in the output
+            const ratioMatch = output.match(/\{[\s\S]*?\}/);
+            if (ratioMatch) {
+                const parsed = JSON.parse(ratioMatch[0]);
+                // Check if it looks like ratios (has the expected keys)
+                if (parsed.hbarRatio !== undefined) {
+                    return parsed;
+                }
+            }
+        } catch (error) {
+            console.error("❌ Error extracting ratios:", error);
+        }
+        return null;
+    }
+
+    private async updateContract(ratios: any): Promise<void> {
+        try {
+            await this.agentExecutor!.invoke({
+                input: `Use the update_lynx_contract tool to update the contract with these winning ratios:
+
+${JSON.stringify(ratios, null, 2)}
+
+Update the contract and return the result.`
+            });
+            
+            await this.sendDashboardAlert("Contract Updated: Token ratios have been successfully updated on the Lynx contract.");
+        } catch (error) {
+            console.error("❌ Error updating contract:", error);
+        }
+    }
+
+    private async createSnapshot(ratios: any): Promise<void> {
+        try {
+            await this.agentExecutor!.invoke({
+                input: `Use the create_token_snapshot tool to create a snapshot with these ratios:
+
+Ratios: ${JSON.stringify(ratios, null, 2)}
+Session ID: governance_round_${new Date().toISOString().split('T')[0]}
+Created By: ${this.environment.HEDERA_ACCOUNT_ID}
+
+Create and send the snapshot.`
+            });
+        } catch (error) {
+            console.error("❌ Error creating snapshot:", error);
+        }
+    }
+
+    private resetGovernanceState(): void {
+        console.log("🔄 Resetting governance state for next round...");
+        this.collectedVotes = [];
+        this.currentVotingPower = 0;
+    }
+
+
+
+
 
     private async sendBalancerAlert(): Promise<void> {
         if (!this.agentExecutor) {
@@ -288,10 +455,16 @@ export class LynxGovernanceAgent {
         
         try {
             const result = await this.agentExecutor.invoke({
-                input: `Use the submit_topic_message_tool to submit an alert to the ${this.environment.BALANCER_ALERT_TOPIC} topic with the message "Balancer Alert: New token ratios have been updated."`
+                input: `CRITICAL: Use submit_topic_message_tool to send message to topic ${this.environment.BALANCER_ALERT_TOPIC} ONLY.
+
+Message: "Balancer Alert: New token ratios have been updated."
+
+Topic ID: ${this.environment.BALANCER_ALERT_TOPIC}
+
+NEVER use voting topic ${this.environment.CURRENT_ROUND_VOTING_TOPIC}!`
             });
 
-            console.log("🔍 Agent result:", result);
+            console.log("⚖️ Balancer alert sent.");
         } catch (error) {
             console.error("❌ Error sending balancer alert:", error);
         }
@@ -303,11 +476,21 @@ export class LynxGovernanceAgent {
         }
 
         try {
+            console.log(`📊 Sending dashboard alert to topic: ${this.environment.DASHBOARD_ALERT_TOPIC}`);
+            
             const result = await this.agentExecutor.invoke({
-                input: `Use the submit_topic_message_tool to submit an alert to the ${this.environment.DASHBOARD_ALERT_TOPIC} topic with the message "${message}"`
+                input: `CRITICAL: Use submit_topic_message_tool to send message to topic ${this.environment.DASHBOARD_ALERT_TOPIC} ONLY.
+
+Message: "${message}"
+
+Topic ID: ${this.environment.DASHBOARD_ALERT_TOPIC}
+
+NEVER use voting topic ${this.environment.CURRENT_ROUND_VOTING_TOPIC} for alerts!`
             });
 
-            console.log("📊 Dashboard alert sent:", result);
+            console.log(`🔍 Dashboard alert result:`, result.output.substring(0, 200));
+
+            console.log("📊 Dashboard alert sent.");
         } catch (error) {
             console.error("❌ Error sending dashboard alert:", error);
         }

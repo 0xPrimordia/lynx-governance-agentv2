@@ -3,6 +3,7 @@ export interface EnvironmentConfig {
     HEDERA_ACCOUNT_ID?: string;
     HEDERA_PRIVATE_KEY?: string;
     OPENAI_KEY?: string;
+    AI_GATEWAY_API_KEY?: string;
     LYNX_CONTRACT?: string;
     CURRENT_ROUND_VOTING_TOPIC?: string;
     TOKEN_RATIO_SNAPSHOT_TOPIC?: string;

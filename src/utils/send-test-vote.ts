@@ -10,7 +10,7 @@ async function getOrCreateVotingTopic(client: Client): Promise<string> {
   if (existingTopicId && existingTopicId !== '0.0.0') {
     try {
       // Try to query the existing topic to see if it's valid
-      const topicInfo = await new TopicInfoQuery()
+      await new TopicInfoQuery()
         .setTopicId(existingTopicId)
         .execute(client);
       
@@ -79,8 +79,12 @@ async function sendTestVote() {
     const testVote: MultiRatioVote = {
       type: 'MULTI_RATIO_VOTE',
       ratioChanges: [
-        { token: 'HBAR', newRatio: 60 },
-        { token: 'USDC', newRatio: 40 }
+        { token: 'HBAR', newRatio: 50 },
+        { token: 'USDC', newRatio: 20 },
+        { token: 'WBTC', newRatio: 3 },
+        { token: 'SAUCE', newRatio: 7 },
+        { token: 'JAM', newRatio: 10 },
+        { token: 'HEADSTART', newRatio: 10 }
       ],
       voterAccountId: process.env.HEDERA_ACCOUNT_ID!,
       votingPower: 1000,

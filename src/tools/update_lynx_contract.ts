@@ -30,7 +30,7 @@ export class UpdateLynxContractTool extends StructuredTool {
 
             const contractId = process.env.LYNX_CONTRACT!;
 
-            // Execute contract function updateRatios
+            // Execute contract function adminUpdateRatios (admin access instead of governance)
             const functionParameters = new ContractFunctionParameters()
                 .addUint256(hbarRatio)
                 .addUint256(wbtcRatio)
@@ -41,8 +41,8 @@ export class UpdateLynxContractTool extends StructuredTool {
 
             const contractExecTx = new ContractExecuteTransaction()
                 .setContractId(contractId)
-                .setFunction('updateRatios', functionParameters)
-                .setGas(300000);
+                .setFunction('adminUpdateRatios', functionParameters)
+                .setGas(1000000); // Increased from 300K to 1M gas
 
             const response = await contractExecTx.execute(this.client);
             const receipt = await response.getReceipt(this.client);

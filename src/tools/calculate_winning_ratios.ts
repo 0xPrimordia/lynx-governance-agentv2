@@ -2,13 +2,15 @@ import { z } from 'zod';
 import { StructuredTool } from '@langchain/core/tools';
 import { MultiRatioVoteSchema, MultiRatioVote } from '../typescript/vote.js';
 
-export class TallyVoteTool extends StructuredTool {
-    name = 'tally_vote';
-    description = 'This tool is used to tally the votes for the Lynx Token DAO Parameters and return the results.';
-    schema = z.array(MultiRatioVoteSchema);
+export class CalculateWinningRatiosTool extends StructuredTool {
+    name = 'calculate_winning_ratios';
+    description = 'Processes all collected governance votes when quorum is reached to determine winning token ratios. Handles latest vote per voter (by timestamp), aggregates voting power by token/ratio combination, and returns the winning ratios for each token. Call this tool only after RUNNING_VOTE_TOTAL >= quorum threshold.';
+    schema = z.object({
+        votes: z.array(MultiRatioVoteSchema)
+    });
 
     async _call(input: z.infer<typeof this.schema>): Promise<string> {
-        const votes = input;
+        const votes = input.votes;
         
         // Process votes - latest vote per voter wins
         const voterMap = new Map<string, MultiRatioVote>();
