@@ -25,14 +25,14 @@ export class CreateTokenSnapshotTool extends StructuredTool {
         const { hbarRatio, wbtcRatio, sauceRatio, usdcRatio, jamRatio, headstartRatio, sessionId, createdBy } = input;
         
         try {
-            // Convert percentages to decimal weights
+            // Keep token weights as ratios (same as contract values)
             const tokenWeights = {
-                HBAR: hbarRatio / 100,
-                WBTC: wbtcRatio / 100,
-                SAUCE: sauceRatio / 100,
-                USDC: usdcRatio / 100,
-                JAM: jamRatio / 100,
-                HEADSTART: headstartRatio / 100
+                HBAR: hbarRatio,
+                WBTC: wbtcRatio,
+                SAUCE: sauceRatio,
+                USDC: usdcRatio,
+                JAM: jamRatio,
+                HEADSTART: headstartRatio
             };
 
             // Create hash of token weights for integrity
