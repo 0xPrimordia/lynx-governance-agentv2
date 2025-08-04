@@ -12,7 +12,7 @@
 
 ## 🎯 Overview
 
-The **Lynx Governance Agent V2** is an intelligent AI-powered agent that manages decentralized governance voting for token portfolio ratios on the Hedera Hashgraph network. It orchestrates the complete governance lifecycle from vote collection to smart contract execution, working seamlessly with the [Lynx Balancer Agent](https://github.com/0xPrimordia/lynx-balancer-agent) for automated portfolio rebalancing.
+The **Lynx Governance Agent V2** is an AI powered agent that manages decentralized governance voting for token portfolio ratios on the Hedera Hashgraph network. It orchestrates the complete governance lifecycle from vote collection to smart contract execution, working seamlessly with the [Lynx Balancer Agent](https://github.com/0xPrimordia/lynx-balancer-agent) for automated portfolio rebalancing.
 
 ### ✨ Key Features
 

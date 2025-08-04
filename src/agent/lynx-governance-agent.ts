@@ -14,12 +14,6 @@ config();
 
 const QUORUM_THRESHOLD = 1000;
 
-// next to do: setup agent too track quorum threshold vs total voting power
-// update lynx contract with winning token/ratios
-// post new token/ratios to the snapshot topic
-// send balancer alert for winning token/ratios
-// send dashboard alerts along the way
-
 export class LynxGovernanceAgent {
     private environment: EnvironmentConfig;
     private hederaAgentToolkit?: HederaLangchainToolkit;
