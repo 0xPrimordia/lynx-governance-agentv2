@@ -24,8 +24,7 @@ async function getOrCreateVotingTopic(client: Client): Promise<string> {
   // Create a new topic
   console.log('Creating new HCS-2 voting topic...');
   const createTopicTx = new TopicCreateTransaction()
-    .setTopicMemo('hcs-2:0:86400') // HCS-2 indexed topic, 1 day TTL
-    .setSubmitKey(client.operatorPublicKey!);
+    .setTopicMemo('hcs-2:0:86400'); // HCS-2 indexed topic, 1 day TTL
   
   const createResponse = await createTopicTx.execute(client);
   const createReceipt = await createResponse.getReceipt(client);
@@ -79,8 +78,8 @@ async function sendTestVote() {
     const testVote: MultiRatioVote = {
       type: 'MULTI_RATIO_VOTE',
       ratioChanges: [
-        { token: 'HBAR', newRatio: 50 },
-        { token: 'USDC', newRatio: 20 },
+        { token: 'HBAR', newRatio: 40 },
+        { token: 'USDC', newRatio: 30 },
         { token: 'WBTC', newRatio: 3 },
         { token: 'SAUCE', newRatio: 7 },
         { token: 'JAM', newRatio: 10 },
