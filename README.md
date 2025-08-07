@@ -12,7 +12,7 @@
 
 ## 🎯 Overview
 
-The **Lynx Governance Agent V2** is an AI powered agent that manages decentralized governance voting for token portfolio ratios on the Hedera Hashgraph network. It orchestrates the complete governance lifecycle from vote collection to smart contract execution, working seamlessly with the [Lynx Balancer Agent](https://github.com/0xPrimordia/lynx-balancer-agent) for automated portfolio rebalancing.
+The **Lynx Governance Agent V2** is an AI powered agent that manages decentralized governance voting for token portfolio ratios on the Hedera Hashgraph network. It orchestrates the complete governance lifecycle from vote collection to smart contract execution, working seamlessly with the [Lynx Balancer Agent](https://github.com/0xPrimordia/lynx-balancer-agent) for automated portfolio rebalancing and the [Lynx Frontend](https://github.com/0xPrimordia/lynx) for user interface and governance voting.
 
 ### ✨ Key Features
 
@@ -187,6 +187,28 @@ The companion [Balancer Agent](https://github.com/0xPrimordia/lynx-balancer-agen
 - ⚡ **V3 Hedera Agent Kit** - Modern LangChain-based agent architecture
 - 🛡️ **Connection Security** - Explicit approval and account-based authentication
 
+## 🖥️ Frontend Integration
+
+This governance agent integrates with the **[Lynx Frontend](https://github.com/0xPrimordia/lynx)** - a modern Next.js web application that provides the user interface for governance voting and portfolio management.
+
+### Frontend Features
+
+The [Lynx Frontend](https://github.com/0xPrimordia/lynx) offers:
+
+- 🗳️ **Governance Voting Interface** - Interactive sliders for token ratio adjustments
+- 💰 **Token Minting/Burning** - Real-time portfolio composition and token operations
+- 📊 **Live Portfolio Monitoring** - Real-time balance and ratio tracking
+- 🏛️ **Governance Dashboard** - Historical voting data and decision tracking
+- 🔗 **Hedera Wallet Integration** - Multi-wallet support (HashPack, Blade, MyHbarWallet)
+- 📱 **Responsive Design** - Modern UI with retro terminal aesthetic
+
+### User Workflow
+
+1. **Vote Submission** - Users submit governance votes through the frontend interface
+2. **HCS-2 Processing** - Votes are sent to HCS-2 topics for agent processing
+3. **Real-time Updates** - Frontend receives live updates on governance decisions
+4. **Portfolio Reflection** - New ratios are immediately reflected in the minting interface
+
 ## 🏛️ Smart Contract Integration
 
 ### Supported Tokens
@@ -298,6 +320,7 @@ This project is licensed under the **Apache-2.0 License** - see the [LICENSE](LI
 - 🐛 **Issues**: Report bugs and request features via GitHub Issues  
 - 💬 **Discussions**: Join the community discussions for help and ideas
 - 🔗 **Balancer Agent**: See the [companion repository](https://github.com/0xPrimordia/lynx-balancer-agent)
+- 🖥️ **Frontend**: Check out the [Lynx Frontend](https://github.com/0xPrimordia/lynx) for the user interface
 
 ---
 
